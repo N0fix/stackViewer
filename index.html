@@ -24,9 +24,9 @@
 			<button id="stack_pop_button">Pop</button>
 			
 			<button class="color_button selected_color" style="background-color: #FFFFFF">&nbsp;&nbsp;&nbsp;</button>
-			<button class="color_button" style="background-color: #FF0000">&nbsp;&nbsp;&nbsp;</button>
+			<button class="color_button" style="background-color: #ff5954">&nbsp;&nbsp;&nbsp;</button>
 			<button class="color_button" style="background-color: #00FF00">&nbsp;&nbsp;&nbsp;</button>
-			<button class="color_button" style="background-color: #0000FF">&nbsp;&nbsp;&nbsp;</button>
+			<button class="color_button" style="background-color: #6ba3ff">&nbsp;&nbsp;&nbsp;</button>
 
 			<button id="export_button">Export PNG</button>
 		</div>
@@ -43,10 +43,10 @@
 		pointers_margin = 3;
 		stack = [];
 		stack_base_position = {x: 100, y: 600}; //y from upper border
-		stack_element_size = {width: 300, height: 60};
+		stack_element_size = {width: 400, height: 60};
 		selected_color = "0xFFFFFF";
 
-		app = new PIXI.Application(500, 630, {transparent: true});
+		app = new PIXI.Application(600, 630, {transparent: false});
 		canvas = document.querySelector("#stack").appendChild(app.view);
 
 		canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); });
@@ -153,17 +153,17 @@
 			});
 
 			// Text in box
-			if(message.length > 22) {
-				message = message.substring(0, 19)+"...";
+			if(message.length > 30) {
+				message = message.substring(0, 27)+"...";
 			}
 
-			let basicText = new PIXI.Text(message, {fontFamily: "Courier"});
+			let basicText = new PIXI.Text(message, {fontFamily: "Courier", fontSize: "22px", fontWeight: "bold"});
 
 			let bounds = basicText.getBounds();
 			let x_offset = (stack_element_size.width - bounds.width)/2;
 
 			basicText.x = stack_base_position.x + x_offset;
-			basicText.y = stack_base_position.y - (stack.length+1)*stack_element_size.height + 15;
+			basicText.y = stack_base_position.y - (stack.length+1)*stack_element_size.height + (stack_element_size.height - basicText.getBounds().height)/2;
 
 
 			// Insertion on stage
