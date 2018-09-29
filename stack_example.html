@@ -1,0 +1,231 @@
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>Stack Example</title>
+		<script src="pixi.min.js"></script>
+	</head>
+	<body>
+		<style>
+			body {
+				background-color: #222222;
+			}
+
+			.selected_color {
+				border: 2px solid orange;
+			}
+
+			button:focus {outline:0;}
+		</style>
+
+		<div id="stack"></div>
+		<div id="controls">
+			<input id="new_stack_element_value"/>
+			<button id="push_on_stack_button">Push</button>	
+			<button id="stack_pop_button">Pop</button>
+			
+			<button class="color_button selected_color" style="background-color: #FFFFFF">&nbsp;&nbsp;&nbsp;</button>
+			<button class="color_button" style="background-color: #FF0000">&nbsp;&nbsp;&nbsp;</button>
+			<button class="color_button" style="background-color: #00FF00">&nbsp;&nbsp;&nbsp;</button>
+			<button class="color_button" style="background-color: #0000FF">&nbsp;&nbsp;&nbsp;</button>
+
+			<button id="export_button">Export PNG</button>
+		</div>
+
+		<script>
+		function rgb2hex(rgb) {
+			rgb = rgb.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+))?\)$/);
+			function hex(x) {
+				return ("0" + parseInt(x).toString(16)).slice(-2);
+			}
+			return "0x" + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
+		}
+
+		pointers_margin = 3;
+		stack = [];
+		stack_base_position = {x: 100, y: 600}; //y from upper border
+		stack_element_size = {width: 300, height: 60};
+		selected_color = "0xFFFFFF";
+
+		app = new PIXI.Application(500, 630, {transparent: true});
+		canvas = document.querySelector("#stack").appendChild(app.view);
+
+		canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); });
+
+		document.querySelector("#new_stack_element_value").addEventListener("keydown", function(evt) {
+			if (evt.keyCode === 13) {
+				evt.preventDefault();
+				document.querySelector("#push_on_stack_button").click();
+			}
+		});
+
+		// CREATE EBP
+		ebp_container = new PIXI.Container();
+		let ebp_graphics = new PIXI.Graphics();
+
+		ebp_graphics.beginFill(0xF7EDCA);
+		ebp_graphics.lineStyle(1, 0x000000, 1);
+
+		ebp_graphics.moveTo(pointers_margin+stack_base_position.x+stack_element_size.width, stack_base_position.y);
+		ebp_graphics.lineTo(pointers_margin+stack_base_position.x+stack_element_size.width+30, stack_base_position.y-stack_element_size.height/3);
+		ebp_graphics.lineTo(pointers_margin+stack_base_position.x+stack_element_size.width+30, stack_base_position.y-stack_element_size.height/6);
+		ebp_graphics.lineTo(pointers_margin+stack_base_position.x+stack_element_size.width+50, stack_base_position.y-stack_element_size.height/6);
+		ebp_graphics.lineTo(pointers_margin+stack_base_position.x+stack_element_size.width+50, stack_base_position.y+stack_element_size.height/6);
+		ebp_graphics.lineTo(pointers_margin+stack_base_position.x+stack_element_size.width+30, stack_base_position.y+stack_element_size.height/6);
+		ebp_graphics.lineTo(pointers_margin+stack_base_position.x+stack_element_size.width+30, stack_base_position.y+stack_element_size.height/3);
+		ebp_graphics.lineTo(pointers_margin+stack_base_position.x+stack_element_size.width, stack_base_position.y);
+
+		let ebp_text = new PIXI.Text("EBP", {fill : '#F7EDCA', stroke : '#000000', strokeThickness : 2, fontSize : '18px'});
+		ebp_text.x = pointers_margin+stack_base_position.x+stack_element_size.width+50+3;
+		ebp_text.y = stack_base_position.y-stack_element_size.height/6;
+
+		ebp_container.addChild(ebp_graphics);
+		ebp_container.addChild(ebp_text);
+
+		app.stage.addChild(ebp_container);
+
+		// CREATE ESP
+		esp_container = new PIXI.Container();
+		let esp_graphics = new PIXI.Graphics();
+
+		esp_graphics.beginFill(0xF7EDCA);
+		esp_graphics.lineStyle(1, 0x000000, 1);
+
+		esp_graphics.moveTo(stack_base_position.x-pointers_margin, stack_base_position.y);
+		esp_graphics.lineTo(stack_base_position.x-pointers_margin-30, stack_base_position.y-stack_element_size.height/3);
+		esp_graphics.lineTo(stack_base_position.x-pointers_margin-30, stack_base_position.y-stack_element_size.height/6);
+		esp_graphics.lineTo(stack_base_position.x-pointers_margin-50, stack_base_position.y-stack_element_size.height/6);
+		esp_graphics.lineTo(stack_base_position.x-pointers_margin-50, stack_base_position.y+stack_element_size.height/6);
+		esp_graphics.lineTo(stack_base_position.x-pointers_margin-30, stack_base_position.y+stack_element_size.height/6);
+		esp_graphics.lineTo(stack_base_position.x-pointers_margin-30, stack_base_position.y+stack_element_size.height/3);
+		esp_graphics.lineTo(stack_base_position.x-pointers_margin, stack_base_position.y);
+
+		let esp_text = new PIXI.Text("ESP", {fill : '#F7EDCA', stroke : '#000000', strokeThickness : 2, fontSize : '18px'});
+		esp_text.x = stack_base_position.x-50-3-pointers_margin-esp_text.getBounds().width;
+		esp_text.y = stack_base_position.y-stack_element_size.height/6;
+
+		esp_container.addChild(esp_graphics);
+		esp_container.addChild(esp_text);
+
+		app.stage.addChild(esp_container);
+
+
+		// STACK FUNCTIONS
+		function addToStack(message) {
+			let container = new PIXI.Container();
+
+			// Graphics (stack element box)
+			let graphics = new PIXI.Graphics();
+			graphics.stackPosition = stack.length;
+
+			// Draw box
+			graphics.lineStyle(2, 0x000000, 1, 0.5);
+			graphics.beginFill(selected_color, 1);
+			graphics.drawRect(stack_base_position.x, 
+							  stack_base_position.y - (stack.length+1)*stack_element_size.height, 
+							  stack_element_size.width, 
+							  stack_element_size.height);
+
+			// Interactivity
+			graphics.interactive = true;
+			graphics.on('mousedown', function(evt) {
+
+				//redraw box on mouse click
+				graphics.lineStyle(2, 0x000000, 1, 0.5);
+				graphics.beginFill(selected_color, 1);
+				graphics.drawRect(stack_base_position.x,
+							  stack_base_position.y - (graphics.stackPosition+1)*stack_element_size.height, 
+							  stack_element_size.width, 
+							  stack_element_size.height);
+			});
+
+			graphics.on('rightdown', function(evt) {
+
+				// Compute position in stack cell to be able to have EBP pointer on top or bottom of cell
+				let y_point = stack_base_position.y - evt.data.global.y;
+				let cell = Math.floor(y_point / stack_element_size.height);
+				let position_in_cell = y_point % stack_element_size.height;
+
+				if(position_in_cell > stack_element_size.height/2) {
+					cell++;
+				}
+
+				ebp_container.y = -(cell)*stack_element_size.height;
+			});
+
+			// Text in box
+			if(message.length > 22) {
+				message = message.substring(0, 19)+"...";
+			}
+
+			let basicText = new PIXI.Text(message, {fontFamily: "Lucida Console"});
+
+			let bounds = basicText.getBounds();
+			let x_offset = (stack_element_size.width - bounds.width)/2;
+
+			basicText.x = stack_base_position.x + x_offset;
+			basicText.y = stack_base_position.y - (stack.length+1)*stack_element_size.height + 15;
+
+
+			// Insertion on stage
+			container.addChild(graphics);
+			container.addChild(basicText);
+
+			app.stage.addChild(container);
+			stack.push(container);
+			esp_container.y -= stack_element_size.height;
+		}
+
+		function popFromStack() {
+			if(stack.length === 0) return;
+			app.stage.removeChild(stack.pop());
+			esp_container.y += stack_element_size.height;
+
+			// If EBP_pos was after last cell move it
+			let ebp_pos = (-ebp_container.y) / stack_element_size.height;
+
+			if(ebp_pos > stack.length) {
+				ebp_container.y = -(stack.length)*stack_element_size.height;
+			}
+		}
+
+
+		// EXPORT FUNCTIONS
+		function download_sprite_as_png(renderer, sprite, fileName) {
+			renderer.extract.canvas(sprite).toBlob(function(b){
+				var a = document.createElement('a');
+				document.body.append(a);
+				a.download = fileName;
+				a.href = URL.createObjectURL(b);
+				a.click();
+				a.remove();
+			}, 'image/png');
+		}
+
+
+		// CONTROL FUNCTIONS
+		document.querySelector("#push_on_stack_button").addEventListener("click", function(evt) {
+			let input = document.querySelector("#new_stack_element_value");
+
+			if(input.value === "") return;
+
+			addToStack(input.value);
+			input.value = "";
+		});
+
+		document.querySelector("#stack_pop_button").addEventListener("click", () => {popFromStack()});
+
+		document.querySelector("#export_button").addEventListener("click", () => {download_sprite_as_png(app.renderer, app.stage, "stack_png_export.png")});
+
+
+		//COLORPICK FUNCTIONS
+		document.querySelectorAll(".color_button").forEach(function(el) {
+			el.addEventListener("click", function(evt) {
+				document.querySelectorAll(".color_button").forEach((el) => {el.classList.remove("selected_color")});
+				evt.target.classList.add("selected_color");
+				selected_color = rgb2hex(evt.target.style.backgroundColor);
+			});
+		});
+
+		</script>
+	</body>
+</html>
