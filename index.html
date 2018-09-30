@@ -46,7 +46,7 @@
 		stack_element_size = {width: 400, height: 60};
 		selected_color = "0xFFFFFF";
 
-		app = new PIXI.Application(600, 630, {transparent: true});
+		app = new PIXI.Application(600, 630, {transparent: true, antialias: true});
 		canvas = document.querySelector("#stack").appendChild(app.view);
 
 		canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); });
