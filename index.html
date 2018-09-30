@@ -19,7 +19,13 @@
 
 		<div id="stack"></div>
 		<div id="controls">
-			<input id="new_stack_element_value"/>
+			<input id="stack_title" placeholder="Stack title"/>
+			<button id="create_stack_button">Create Stack</button>
+			
+			<select id="stacks_options">
+			</select>
+
+			<input id="new_stack_element_value" placeholder="New cell value"/>
 			<button id="push_on_stack_button">Push</button>	
 			<button id="stack_pop_button">Pop</button>
 			
@@ -32,6 +38,253 @@
 		</div>
 
 		<script>
+
+		class Stack {
+
+			constructor(app, options = {}) {
+				// Options
+				this.pointers_margin = options.pointers_margin || 3;
+				this.x = options.x || 100;
+				this.y = options.y || 540;
+				this.stack_element_width = options.stack_element_width || 400;
+				this.stack_element_height= options.stack_element_height|| 60;
+				this.title = options.title || "";
+
+				this.stack = [];
+				this.app = app;
+
+				this.container = new PIXI.Container();
+				this.app.stage.addChild(this.container);
+
+				this.createStackHUD();
+			}
+
+			createStackHUD() {
+				// CREATE EBP
+				let ebp_container = new PIXI.Container();
+				let ebp_graphics = new PIXI.Graphics();
+
+				ebp_graphics.beginFill(0xF7EDCA);
+				ebp_graphics.lineStyle(1, 0x000000, 1);
+
+				ebp_graphics.moveTo(this.pointers_margin+this.x+this.stack_element_width, this.y);
+				ebp_graphics.lineTo(this.pointers_margin+this.x+this.stack_element_width+30, this.y-this.stack_element_height/3);
+				ebp_graphics.lineTo(this.pointers_margin+this.x+this.stack_element_width+30, this.y-this.stack_element_height/6);
+				ebp_graphics.lineTo(this.pointers_margin+this.x+this.stack_element_width+50, this.y-this.stack_element_height/6);
+				ebp_graphics.lineTo(this.pointers_margin+this.x+this.stack_element_width+50, this.y+this.stack_element_height/6);
+				ebp_graphics.lineTo(this.pointers_margin+this.x+this.stack_element_width+30, this.y+this.stack_element_height/6);
+				ebp_graphics.lineTo(this.pointers_margin+this.x+this.stack_element_width+30, this.y+this.stack_element_height/3);
+				ebp_graphics.lineTo(this.pointers_margin+this.x+this.stack_element_width, this.y);
+
+				let ebp_text = new PIXI.Text("EBP", {fill : '#F7EDCA', stroke : '#000000', strokeThickness : 2, fontSize : '18px'});
+				ebp_text.x = this.pointers_margin+this.x+this.stack_element_width+50+3;
+				ebp_text.y = this.y-this.stack_element_height/6;
+
+				ebp_container.addChild(ebp_graphics);
+				ebp_container.addChild(ebp_text);
+
+				this.container.addChild(ebp_container);
+				this.ebp_container = ebp_container;
+
+				// CREATE ESP
+				let esp_container = new PIXI.Container();
+				let esp_graphics = new PIXI.Graphics();
+
+				esp_graphics.beginFill(0xF7EDCA);
+				esp_graphics.lineStyle(1, 0x000000, 1);
+
+				esp_graphics.moveTo(this.x-this.pointers_margin, this.y);
+				esp_graphics.lineTo(this.x-this.pointers_margin-30, this.y-this.stack_element_height/3);
+				esp_graphics.lineTo(this.x-this.pointers_margin-30, this.y-this.stack_element_height/6);
+				esp_graphics.lineTo(this.x-this.pointers_margin-50, this.y-this.stack_element_height/6);
+				esp_graphics.lineTo(this.x-this.pointers_margin-50, this.y+this.stack_element_height/6);
+				esp_graphics.lineTo(this.x-this.pointers_margin-30, this.y+this.stack_element_height/6);
+				esp_graphics.lineTo(this.x-this.pointers_margin-30, this.y+this.stack_element_height/3);
+				esp_graphics.lineTo(this.x-this.pointers_margin, this.y);
+
+				let esp_text = new PIXI.Text("ESP", {fill : '#F7EDCA', stroke : '#000000', strokeThickness : 2, fontSize : '18px'});
+				esp_text.x = this.x-50-3-this.pointers_margin-esp_text.getBounds().width;
+				esp_text.y = this.y-this.stack_element_height/6;
+
+				esp_container.addChild(esp_graphics);
+				esp_container.addChild(esp_text);
+
+				this.container.addChild(esp_container);
+				this.esp_container = esp_container;
+
+
+				let title_text = new PIXI.Text(this.title, {fill : '#F7EDCA', stroke : '#000000', strokeThickness : 2, fontSize : '25px'});
+				console.log(this.title);
+				title_text.x = this.x + (this.stack_element_width - title_text.getBounds().width)/2 ;
+				title_text.y = this.y;
+
+				this.container.addChild(title_text);
+				this.title_text = title_text;
+			}
+
+			push(message) {
+				let container = new PIXI.Container();
+
+				// Graphics (stack element box)
+				let graphics = new PIXI.Graphics();
+				graphics.stackPosition = this.stack.length;
+
+				// Draw box
+				graphics.lineStyle(2, 0x000000, 1, 0.5);
+				graphics.beginFill(selected_color, 1);
+				graphics.drawRect(this.x, 
+								  this.y - (this.stack.length+1)*this.stack_element_height, 
+								  this.stack_element_width, 
+								  this.stack_element_height);
+
+				// Interactivity
+				graphics.interactive = true;
+				let that = this;
+				graphics.on('mousedown', function(evt) {
+
+					//redraw box on mouse click
+					graphics.lineStyle(2, 0x000000, 1, 0.5);
+					graphics.beginFill(selected_color, 1);
+					graphics.drawRect(that.x,
+								  that.y - (graphics.stackPosition+1)*that.stack_element_height, 
+								  that.stack_element_width, 
+								  that.stack_element_height);
+				});
+
+				graphics.on('rightdown', function(evt) {
+
+					// Compute position in stack cell to be able to have EBP pointer on top or bottom of cell
+					let y_point = that.y - evt.data.global.y;
+					let cell = Math.floor(y_point / that.stack_element_height);
+					let position_in_cell = y_point % that.stack_element_height;
+
+					if(position_in_cell > that.stack_element_height/2) {
+						cell++;
+					}
+
+					that.ebp_container.y = -(cell)*that.stack_element_height;
+				});
+
+				// Text in box
+				if(message.length > 30) {
+					message = message.substring(0, 27)+"...";
+				}
+
+				let basicText = new PIXI.Text(message, {fontFamily: "Courier", fontSize: "22px", fontWeight: "bold"});
+
+				let bounds = basicText.getBounds();
+				let x_offset = (this.stack_element_width - bounds.width)/2;
+
+				basicText.x = this.x + x_offset;
+				basicText.y = this.y - (this.stack.length+1)*this.stack_element_height + (this.stack_element_height - basicText.getBounds().height)/2;
+
+
+				// Insertion on stage
+				container.addChild(graphics);
+				container.addChild(basicText);
+
+				this.container.addChild(container);
+				this.stack.push(container);
+				this.esp_container.y -= this.stack_element_height;
+			}
+
+			pop() {
+				if(this.stack.length === 0) return;
+				this.container.removeChild(this.stack.pop());
+				this.esp_container.y += this.stack_element_height;
+
+				// If EBP_pos was after last cell move it
+				let ebp_pos = (-this.ebp_container.y) / this.stack_element_height;
+
+				if(ebp_pos > this.stack.length) {
+					this.ebp_container.y = -(this.stack.length)*this.stack_element_height;
+				}
+			}
+		}
+
+
+
+		selected_color = "0xFFFFFF";
+		selected_stack = null;
+		stacks = [];
+
+
+		app = new PIXI.Application(1200, 630, {transparent: true, antialias: true});
+		canvas = document.querySelector("#stack").appendChild(app.view);
+
+		canvas.addEventListener('contextmenu', (e) => {e.preventDefault()});
+
+		
+		// CONTROL FUNCTIONS
+
+		// trigger stack creation on "Enter"
+		document.querySelector("#stack_title").addEventListener("keydown", function(evt) {
+			if (evt.keyCode === 13) {
+				evt.preventDefault();
+				document.querySelector("#create_stack_button").click();
+			}
+		});
+
+		// Create new stack
+		document.querySelector("#create_stack_button").addEventListener("click", function(evt) {
+			let new_stack_title = document.querySelector("#stack_title").value;
+			new_stack_title = new_stack_title === "" ? "Stack "+(stacks.length+1) : new_stack_title;
+			
+			let new_stack = new Stack(app, {x: 100+stacks.length*600, title: new_stack_title});
+
+			stacks.push(new_stack);
+
+
+			// Add new stack to options
+			let stack_option_node = document.createElement("option");
+			stack_option_node.text = new_stack_title;
+			stack_option_node.stack = new_stack;
+			stack_option_node.selected = true;
+
+			document.querySelector("#stacks_options").appendChild(stack_option_node);
+			
+
+			// Change selected stack
+			selected_stack = new_stack;
+
+
+			document.querySelector("#stack_title").value = "";
+		});
+
+		// Change selected stack
+		document.querySelector("#stacks_options").addEventListener("change", function(evt) {
+			selected_stack = document.querySelector("#stacks_options")
+									 .querySelectorAll("option")
+									 [evt.target.selectedIndex].stack;
+		});
+
+		// Trigger push on "Enter"
+		document.querySelector("#new_stack_element_value").addEventListener("keydown", function(evt) {
+			if (evt.keyCode === 13) {
+				evt.preventDefault();
+				document.querySelector("#push_on_stack_button").click();
+			}
+		});
+
+		// Push element on selected stack
+		document.querySelector("#push_on_stack_button").addEventListener("click", function(evt) {
+			let input = document.querySelector("#new_stack_element_value");
+
+			if(input.value === "") return;
+			if(!selected_stack) return;
+
+			selected_stack.push(input.value);
+			input.value = "";
+		});
+
+		// Pop element from selected stack
+		document.querySelector("#stack_pop_button").addEventListener("click", () => {selected_stack && selected_stack.pop()});
+
+		// Export view
+		document.querySelector("#export_button").addEventListener("click", () => {download_sprite_as_png(app.renderer, app.stage, "stack_png_export.png")});
+
+
+		//COLORPICK FUNCTIONS
 		function rgb2hex(rgb) {
 			rgb = rgb.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+))?\)$/);
 			function hex(x) {
@@ -40,153 +293,14 @@
 			return "0x" + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
 		}
 
-		pointers_margin = 3;
-		stack = [];
-		stack_base_position = {x: 100, y: 600}; //y from upper border
-		stack_element_size = {width: 400, height: 60};
-		selected_color = "0xFFFFFF";
-
-		app = new PIXI.Application(600, 630, {transparent: true, antialias: true});
-		canvas = document.querySelector("#stack").appendChild(app.view);
-
-		canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); });
-
-		document.querySelector("#new_stack_element_value").addEventListener("keydown", function(evt) {
-			if (evt.keyCode === 13) {
-				evt.preventDefault();
-				document.querySelector("#push_on_stack_button").click();
-			}
+		document.querySelectorAll(".color_button").forEach(function(el) {
+			el.addEventListener("click", function(evt) {
+				document.querySelectorAll(".color_button").forEach((el) => {el.classList.remove("selected_color")});
+				evt.target.classList.add("selected_color");
+				selected_color = rgb2hex(evt.target.style.backgroundColor);
+			});
 		});
 
-		// CREATE EBP
-		ebp_container = new PIXI.Container();
-		let ebp_graphics = new PIXI.Graphics();
-
-		ebp_graphics.beginFill(0xF7EDCA);
-		ebp_graphics.lineStyle(2, 0x000000, 1);
-
-		ebp_graphics.moveTo(pointers_margin+stack_base_position.x+stack_element_size.width, stack_base_position.y);
-		ebp_graphics.lineTo(pointers_margin+stack_base_position.x+stack_element_size.width+30, stack_base_position.y-stack_element_size.height/3);
-		ebp_graphics.lineTo(pointers_margin+stack_base_position.x+stack_element_size.width+30, stack_base_position.y-stack_element_size.height/6);
-		ebp_graphics.lineTo(pointers_margin+stack_base_position.x+stack_element_size.width+50, stack_base_position.y-stack_element_size.height/6);
-		ebp_graphics.lineTo(pointers_margin+stack_base_position.x+stack_element_size.width+50, stack_base_position.y+stack_element_size.height/6);
-		ebp_graphics.lineTo(pointers_margin+stack_base_position.x+stack_element_size.width+30, stack_base_position.y+stack_element_size.height/6);
-		ebp_graphics.lineTo(pointers_margin+stack_base_position.x+stack_element_size.width+30, stack_base_position.y+stack_element_size.height/3);
-		ebp_graphics.lineTo(pointers_margin+stack_base_position.x+stack_element_size.width, stack_base_position.y);
-
-		let ebp_text = new PIXI.Text("EBP", {fill : '#F7EDCA', stroke : '#000000', strokeThickness : 2, fontSize : '18px'});
-		ebp_text.x = pointers_margin+stack_base_position.x+stack_element_size.width+50+3;
-		ebp_text.y = stack_base_position.y-stack_element_size.height/6;
-
-		ebp_container.addChild(ebp_graphics);
-		ebp_container.addChild(ebp_text);
-
-		app.stage.addChild(ebp_container);
-
-		// CREATE ESP
-		esp_container = new PIXI.Container();
-		let esp_graphics = new PIXI.Graphics();
-
-		esp_graphics.beginFill(0xF7EDCA);
-		esp_graphics.lineStyle(2, 0x000000, 1);
-
-		esp_graphics.moveTo(stack_base_position.x-pointers_margin, stack_base_position.y);
-		esp_graphics.lineTo(stack_base_position.x-pointers_margin-30, stack_base_position.y-stack_element_size.height/3);
-		esp_graphics.lineTo(stack_base_position.x-pointers_margin-30, stack_base_position.y-stack_element_size.height/6);
-		esp_graphics.lineTo(stack_base_position.x-pointers_margin-50, stack_base_position.y-stack_element_size.height/6);
-		esp_graphics.lineTo(stack_base_position.x-pointers_margin-50, stack_base_position.y+stack_element_size.height/6);
-		esp_graphics.lineTo(stack_base_position.x-pointers_margin-30, stack_base_position.y+stack_element_size.height/6);
-		esp_graphics.lineTo(stack_base_position.x-pointers_margin-30, stack_base_position.y+stack_element_size.height/3);
-		esp_graphics.lineTo(stack_base_position.x-pointers_margin, stack_base_position.y);
-
-		let esp_text = new PIXI.Text("ESP", {fill : '#F7EDCA', stroke : '#000000', strokeThickness : 2, fontSize : '18px'});
-		esp_text.x = stack_base_position.x-50-3-pointers_margin-esp_text.getBounds().width;
-		esp_text.y = stack_base_position.y-stack_element_size.height/6;
-
-		esp_container.addChild(esp_graphics);
-		esp_container.addChild(esp_text);
-
-		app.stage.addChild(esp_container);
-
-
-		// STACK FUNCTIONS
-		function addToStack(message) {
-			let container = new PIXI.Container();
-
-			// Graphics (stack element box)
-			let graphics = new PIXI.Graphics();
-			graphics.stackPosition = stack.length;
-
-			// Draw box
-			graphics.lineStyle(2, 0x000000, 1, 0.5);
-			graphics.beginFill(selected_color, 1);
-			graphics.drawRect(stack_base_position.x, 
-							  stack_base_position.y - (stack.length+1)*stack_element_size.height, 
-							  stack_element_size.width, 
-							  stack_element_size.height);
-
-			// Interactivity
-			graphics.interactive = true;
-			graphics.on('mousedown', function(evt) {
-
-				//redraw box on mouse click
-				graphics.lineStyle(2, 0x000000, 1, 0.5);
-				graphics.beginFill(selected_color, 1);
-				graphics.drawRect(stack_base_position.x,
-							  stack_base_position.y - (graphics.stackPosition+1)*stack_element_size.height, 
-							  stack_element_size.width, 
-							  stack_element_size.height);
-			});
-
-			graphics.on('rightdown', function(evt) {
-
-				// Compute position in stack cell to be able to have EBP pointer on top or bottom of cell
-				let y_point = stack_base_position.y - evt.data.global.y;
-				let cell = Math.floor(y_point / stack_element_size.height);
-				let position_in_cell = y_point % stack_element_size.height;
-
-				if(position_in_cell > stack_element_size.height/2) {
-					cell++;
-				}
-
-				ebp_container.y = -(cell)*stack_element_size.height;
-			});
-
-			// Text in box
-			if(message.length > 30) {
-				message = message.substring(0, 27)+"...";
-			}
-
-			let basicText = new PIXI.Text(message, {fontFamily: "Courier", fontSize: "22px", fontWeight: "bold"});
-
-			let bounds = basicText.getBounds();
-			let x_offset = (stack_element_size.width - bounds.width)/2;
-
-			basicText.x = stack_base_position.x + x_offset;
-			basicText.y = stack_base_position.y - (stack.length+1)*stack_element_size.height + (stack_element_size.height - basicText.getBounds().height)/2;
-
-
-			// Insertion on stage
-			container.addChild(graphics);
-			container.addChild(basicText);
-
-			app.stage.addChild(container);
-			stack.push(container);
-			esp_container.y -= stack_element_size.height;
-		}
-
-		function popFromStack() {
-			if(stack.length === 0) return;
-			app.stage.removeChild(stack.pop());
-			esp_container.y += stack_element_size.height;
-
-			// If EBP_pos was after last cell move it
-			let ebp_pos = (-ebp_container.y) / stack_element_size.height;
-
-			if(ebp_pos > stack.length) {
-				ebp_container.y = -(stack.length)*stack_element_size.height;
-			}
-		}
 
 
 		// EXPORT FUNCTIONS
@@ -200,31 +314,6 @@
 				a.remove();
 			}, 'image/png');
 		}
-
-
-		// CONTROL FUNCTIONS
-		document.querySelector("#push_on_stack_button").addEventListener("click", function(evt) {
-			let input = document.querySelector("#new_stack_element_value");
-
-			if(input.value === "") return;
-
-			addToStack(input.value);
-			input.value = "";
-		});
-
-		document.querySelector("#stack_pop_button").addEventListener("click", () => {popFromStack()});
-
-		document.querySelector("#export_button").addEventListener("click", () => {download_sprite_as_png(app.renderer, app.stage, "stack_png_export.png")});
-
-
-		//COLORPICK FUNCTIONS
-		document.querySelectorAll(".color_button").forEach(function(el) {
-			el.addEventListener("click", function(evt) {
-				document.querySelectorAll(".color_button").forEach((el) => {el.classList.remove("selected_color")});
-				evt.target.classList.add("selected_color");
-				selected_color = rgb2hex(evt.target.style.backgroundColor);
-			});
-		});
 
 		</script>
 	</body>
